@@ -173,7 +173,7 @@
             async function sendTypingSample() {
                 if (isSubmitting) return;
                 isSubmitting = true;
-                typingInputEl.disabled = true; // Disable input immediately
+                typingInputEl.disabled = true;
 
                 const payload = {
                     session_id: sessionId,
@@ -193,21 +193,17 @@
                     const data = await response.json();
                     if (!response.ok) throw new Error(data.detail || 'An unknown error occurred.');
 
-                    // --- Handle SUCCESS ---
                     if (data.message) {
                         successfulSamples = REQUIRED_SAMPLES;
                         const finalMessage = `<strong>Session Complete!</strong><br>Your Session ID is: <strong>${sessionId}</strong><br><br>Please remember to fill out the release form and include this Session ID on it.`;
                         showMessage(finalMessage, 'success');
-                        // Input remains disabled on final success
                     } else {
                         successfulSamples = data.events_recorded_for_session;
                         showMessage(`Success! Sample ${successfulSamples} of ${REQUIRED_SAMPLES} recorded.`, 'success');
-                        setTimeout(resetForNextAttempt, 1500); // Wait, then reset for next
+                        setTimeout(resetForNextAttempt, 1500);
                     }
                     updateProgress();
-
                 } catch (error) {
-                    // --- Handle ERROR ---
                     const errorMessage = `<strong>Validation Error:</strong> ${error.message}`;
                     showMessage(errorMessage, "error");
                     handleRetryMechanism();
@@ -240,24 +236,17 @@
 
             function handleRetryMechanism() {
                 let timeoutId = null;
-
                 const retryAction = () => {
-                    clearTimeout(timeoutId); // Clear the timer if Enter was pressed
+                    clearTimeout(timeoutId);
                     document.removeEventListener('keydown', enterKeyListener);
                     resetForNextAttempt();
                 };
-
-                // Option 1: Press Enter
                 const enterKeyListener = (event) => {
-                    if (event.key === 'Enter') {
-                        retryAction();
-                    }
+                    if (event.key === 'Enter') retryAction();
                 };
                 document.addEventListener('keydown', enterKeyListener);
-
-                // Option 2: Wait 3 seconds
                 timeoutId = setTimeout(() => {
-                    document.removeEventListener('keydown', enterKeyListener); // Clean up listener
+                    document.removeEventListener('keydown', enterKeyListener);
                     retryAction();
                 }, 3000);
             }
@@ -271,7 +260,22 @@
             // --- Event Handlers ---
             const keyState = {};
             function handleKeyDown(event) {
-                if (keyState[event.key]) return; 
+                // Prevent navigation keys
+                if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) {
+                    event.preventDefault();
+                    return;
+                }
+
+                // Submit on Enter key
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    if (typingInputEl.value.length > 0) { // Only submit if there's content
+                         setTimeout(sendTypingSample, 100);
+                    }
+                    return;
+                }
+                
+                if (keyState[event.key]) return;
                 keyState[event.key] = { keyDownTimestamp: Math.round(performance.now() * 1000000) };
             }
 
@@ -300,10 +304,12 @@
                 typingInputEl.addEventListener('keydown', handleKeyDown);
                 typingInputEl.addEventListener('keyup', handleKeyUp);
                 typingInputEl.addEventListener('input', handleCharacterHighlight);
-                typingInputEl.addEventListener('keyup', handleCharacterHighlight);
-
+                
                 typingInputEl.addEventListener('input', () => {
-                    if (typingInputEl.value === TYPING_PHRASE) {
+                    // Submit if user types too many characters
+                    if (typingInputEl.value.length > TYPING_PHRASE.length) {
+                         setTimeout(sendTypingSample, 100);
+                    } else if (typingInputEl.value === TYPING_PHRASE) {
                         setTimeout(sendTypingSample, 100);
                     }
                 });
