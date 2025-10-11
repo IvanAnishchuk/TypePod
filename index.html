@@ -48,15 +48,13 @@
             font-size: 1.1em;
             text-align: left;
             border-radius: 4px;
-            /* Added for character highlighting */
-            letter-spacing: 1px; 
+            letter-spacing: 1px;
         }
-        /* Style for individual characters */
         .typing-phrase-container span {
             transition: background-color 0.3s ease;
         }
         .typing-phrase-container span.highlight {
-            background-color: #f1c40f; /* Yellow highlight */
+            background-color: #f1c40f;
             border-radius: 3px;
         }
         .input-field {
@@ -77,6 +75,7 @@
         .input-field:disabled {
             background-color: #f8f9fa;
             cursor: not-allowed;
+            color: #aaa;
         }
         .progress-counter {
             font-size: 16px;
@@ -105,7 +104,7 @@
             border-radius: 8px;
             font-size: 15px;
             font-weight: 500;
-            display: none; /* Hidden by default */
+            display: none;
             text-align: left;
             line-height: 1.6;
         }
@@ -142,20 +141,16 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-
-            // --- Configuration (from server.py) ---
             const TYPING_PHRASE = "a full moon illuminates the night sky";
             const REQUIRED_SAMPLES = 5;
-            const API_BASE_URL = 'http://127.0.0.1:8000'; 
+            const API_BASE_URL = 'http://127.0.0.1:8000';
 
-            // --- DOM Elements ---
             const typingPhraseEl = document.getElementById('typingPhrase');
             const typingInputEl = document.getElementById('typingInput');
             const messageBox = document.getElementById('messageBox');
             const progressCounterEl = document.getElementById('progressCounter');
             const progressBarEl = document.getElementById('progressBar');
 
-            // --- State Variables ---
             let sessionId = null;
             let keyEvents = [];
             let successfulSamples = 0;
@@ -169,7 +164,6 @@
                     const data = await response.json();
                     return data.session_id;
                 } catch (error) {
-                    console.error("Error fetching session ID:", error);
                     showMessage("Could not connect to the server. Please ensure it's running and try refreshing.", "error");
                     typingInputEl.disabled = true;
                     return null;
@@ -179,6 +173,7 @@
             async function sendTypingSample() {
                 if (isSubmitting) return;
                 isSubmitting = true;
+                typingInputEl.disabled = true; // Disable input immediately
 
                 const payload = {
                     session_id: sessionId,
@@ -195,44 +190,35 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(payload),
                     });
-
                     const data = await response.json();
+                    if (!response.ok) throw new Error(data.detail || 'An unknown error occurred.');
 
-                    if (!response.ok) {
-                        throw new Error(data.detail || 'An unknown error occurred.');
-                    }
-
-                    if (data.message) { // Final completion message
+                    // --- Handle SUCCESS ---
+                    if (data.message) {
                         successfulSamples = REQUIRED_SAMPLES;
-                        const finalMessage = `
-                            <strong>Session Complete!</strong><br>
-                            Your Session ID is: <strong>${sessionId}</strong><br><br>
-                            Please remember to fill out the release form and include this Session ID on it.
-                        `;
+                        const finalMessage = `<strong>Session Complete!</strong><br>Your Session ID is: <strong>${sessionId}</strong><br><br>Please remember to fill out the release form and include this Session ID on it.`;
                         showMessage(finalMessage, 'success');
-                        typingInputEl.disabled = true;
-                    } else if (data.events_recorded_for_session) {
+                        // Input remains disabled on final success
+                    } else {
                         successfulSamples = data.events_recorded_for_session;
                         showMessage(`Success! Sample ${successfulSamples} of ${REQUIRED_SAMPLES} recorded.`, 'success');
+                        setTimeout(resetForNextAttempt, 1500); // Wait, then reset for next
                     }
                     updateProgress();
 
                 } catch (error) {
-                    console.error("Error sending typing sample:", error);
-                    showMessage(`<strong>Validation Error:</strong> ${error.message} Please try again.`, "error");
+                    // --- Handle ERROR ---
+                    const errorMessage = `<strong>Validation Error:</strong> ${error.message}`;
+                    showMessage(errorMessage, "error");
+                    handleRetryMechanism();
                 } finally {
-                    setTimeout(() => {
-                        if (successfulSamples < REQUIRED_SAMPLES) {
-                            resetForNextAttempt();
-                        }
-                        isSubmitting = false;
-                    }, 2000); // Increased delay to read messages
+                    isSubmitting = false;
                 }
             }
             
             // --- UI & State Management ---
             function showMessage(msg, type) {
-                messageBox.innerHTML = msg; // Use innerHTML to render the <strong> tags
+                messageBox.innerHTML = msg;
                 messageBox.className = `message-box ${type}`;
                 messageBox.style.display = 'block';
             }
@@ -245,11 +231,35 @@
                 typingInputEl.value = '';
                 keyEvents = [];
                 hideMessage();
-                // Reset character highlights
-                document.querySelectorAll('#typingPhrase span').forEach(span => {
-                    span.classList.remove('highlight');
-                });
-                typingInputEl.focus();
+                document.querySelectorAll('#typingPhrase span').forEach(span => span.classList.remove('highlight'));
+                if (successfulSamples < REQUIRED_SAMPLES) {
+                    typingInputEl.disabled = false;
+                    typingInputEl.focus();
+                }
+            }
+
+            function handleRetryMechanism() {
+                let timeoutId = null;
+
+                const retryAction = () => {
+                    clearTimeout(timeoutId); // Clear the timer if Enter was pressed
+                    document.removeEventListener('keydown', enterKeyListener);
+                    resetForNextAttempt();
+                };
+
+                // Option 1: Press Enter
+                const enterKeyListener = (event) => {
+                    if (event.key === 'Enter') {
+                        retryAction();
+                    }
+                };
+                document.addEventListener('keydown', enterKeyListener);
+
+                // Option 2: Wait 3 seconds
+                timeoutId = setTimeout(() => {
+                    document.removeEventListener('keydown', enterKeyListener); // Clean up listener
+                    retryAction();
+                }, 3000);
             }
 
             function updateProgress() {
@@ -260,7 +270,6 @@
 
             // --- Event Handlers ---
             const keyState = {};
-
             function handleKeyDown(event) {
                 if (keyState[event.key]) return; 
                 keyState[event.key] = { keyDownTimestamp: Math.round(performance.now() * 1000000) };
@@ -268,47 +277,28 @@
 
             function handleKeyUp(event) {
                 if (!keyState[event.key]) return;
-
-                let keyName = event.key;
-                if (keyName === ' ') keyName = 'space';
-                
-                keyEvents.push({
-                    key: keyName,
-                    keyDownTimestamp: keyState[event.key].keyDownTimestamp,
-                    keyUpTimestamp: Math.round(performance.now() * 1000000)
-                });
-                
+                let keyName = event.key === ' ' ? 'space' : event.key;
+                keyEvents.push({ key: keyName, keyDownTimestamp: keyState[event.key].keyDownTimestamp, keyUpTimestamp: Math.round(performance.now() * 1000000) });
                 delete keyState[event.key];
             }
             
             function handleCharacterHighlight() {
                 const typedText = typingInputEl.value;
                 const phraseChars = document.querySelectorAll('#typingPhrase span');
-
-                phraseChars.forEach((span, index) => {
-                    if (index < typedText.length) {
-                        span.classList.add('highlight');
-                    } else {
-                        span.classList.remove('highlight');
-                    }
-                });
+                phraseChars.forEach((span, index) => span.classList.toggle('highlight', index < typedText.length));
             }
 
             // --- Initialization ---
             async function init() {
-                // Wrap each character of the phrase in a <span> for highlighting
                 typingPhraseEl.innerHTML = TYPING_PHRASE.split('').map(char => `<span>${char}</span>`).join('');
-                
                 updateProgress();
-                typingInputEl.focus(); // Auto-focus on load
+                typingInputEl.focus();
 
                 sessionId = await getSessionId();
                 if (!sessionId) return;
 
                 typingInputEl.addEventListener('keydown', handleKeyDown);
                 typingInputEl.addEventListener('keyup', handleKeyUp);
-                
-                // Add listener for both input and keyup for highlighting
                 typingInputEl.addEventListener('input', handleCharacterHighlight);
                 typingInputEl.addEventListener('keyup', handleCharacterHighlight);
 
