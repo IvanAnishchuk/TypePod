@@ -1,91 +1,107 @@
-"""Key Event Recorder FastAPI Server with Typer CLI for configuration."""
+"""Key Event Recorder FastAPI Server."""
 
 import asyncio
 import random
 import string
 from pathlib import Path
-from typing import Union
+from typing import Annotated, Union
 
 import aiofiles
 import typer
 import uvicorn
-from fastapi import FastAPI, Request, status
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-# --- CLI Application using Typer ---
+# --- CLI and App Setup ---
 cli_app = typer.Typer()
-
-# --- Configuration (will be set by the Typer CLI before app startup) ---
-# Initialize with placeholder paths. These are dynamically configured by the CLI.
-DATA_DIR = Path(".")
-FAILED_ATTEMPTS_DIR = Path(".")
-SESSIONS_DIR = Path(".")
-
-# --- FastAPI App ---
-# This object is configured and then run by the Typer command.
 app = FastAPI(title="Key Event Recorder API")
 
-# --- Constants ---
-TARGET_STRING = "a full moon illuminates the night sky"
-CONGRATULATIONS_MESSAGE = (
-    "Congratulations! You have successfully completed all samples for this session."
+# --- CORS Middleware for Local Testing ---
+# This allows a frontend (if served from a different origin) to communicate with the API.
+# WARNING: This is a permissive policy for development. For production, you should
+# restrict the origins to your actual frontend domain.
+origins = [
+    "http://localhost",
+    "http://localhost:8080",
+    "http://127.0.0.1",
+    "http://127.0.0.1:8080",
+    #"null", # Important for opening local file://index.html
+    #None,
+]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"], # Allows all methods (GET, POST, etc.)
+    allow_headers=["*"], # Allows all headers
 )
-MAX_SAMPLES = 5
-SESSION_ID_LENGTH = 6
-SESSION_ID_CHARS = string.ascii_lowercase + string.digits
 
 
-# --- Custom Exception Handling ---
-class APIException(Exception):
-    """Custom exception class for returning structured JSON errors."""
+
+# --- Global State and Constants (to be configured by CLI) ---
+class AppState:
+    """A simple class to hold configurable application state."""
+
+    TARGET_STRING = "a full moon illuminates the night sky"
+    CONGRATULATIONS_MESSAGE = (
+        "Congratulations! You have successfully completed all samples for this session."
+    )
+    MAX_SAMPLES = 5
+    DATA_DIR = Path("collected_data")
+    FAILED_ATTEMPTS_DIR = Path("failed_attempts")
+    SESSIONS_DIR = Path("sessions")
+    SESSION_ID_LENGTH = 6
+    SESSION_ID_CHARS = string.ascii_lowercase + string.digits
+
+
+state = AppState()
+
+
+# --- Custom Exceptions ---
+class APIError(HTTPException):
+    """Custom base exception to include a machine-readable error code."""
 
     def __init__(self, status_code: int, error_code: str, detail: str):
-        self.status_code = status_code
-        self.error_code = error_code
-        self.detail = detail
+        super().__init__(status_code=status_code, detail={"error_code": error_code, "detail": detail})
 
 
-@app.exception_handler(APIException)
-async def api_exception_handler(request: Request, exc: APIException):
-    """Handles APIExceptions and returns a standardized JSON error response."""
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={"error_code": exc.error_code, "detail": exc.detail},
-    )
-
-
-# --- Pydantic Models for Validation and Responses ---
+# --- Pydantic Models for Validation ---
 class KeyEvent(BaseModel):
-    key: str = Field(..., min_length=1)
-    keyDownTimestamp: int = Field(..., gt=0)
-    keyUpTimestamp: int = Field(..., gt=0)
+    """A single key press event."""
+
+    key: str = Field(..., min_length=1, description="The key that was pressed.")
+    keyDownTimestamp: int = Field(..., gt=0, description="Timestamp of key down event (nanoseconds).")
+    keyUpTimestamp: int = Field(..., gt=0, description="Timestamp of key up event (nanoseconds).")
 
 
 class DataSample(BaseModel):
-    session_id: str = Field(..., min_length=SESSION_ID_LENGTH, max_length=SESSION_ID_LENGTH)
+    """A data sample containing a session ID and a matrix of key events."""
+
+    session_id: str
     key_events: list[KeyEvent] = Field(..., min_length=1)
 
 
 class RecordSuccessResponse(BaseModel):
+    """Standard response for a successfully recorded sample."""
+
     events_recorded_for_session: int
 
 
 class SessionCompleteResponse(BaseModel):
+    """Special response for the final successful sample."""
+
     message: str
-
-
-class ErrorResponse(BaseModel):
-    error_code: str
-    detail: str
 
 
 # --- Helper Functions ---
 def generate_unique_session_id() -> str:
     """Generates a short random ID and ensures it's not already in use."""
     while True:
-        session_id = "".join(random.choices(SESSION_ID_CHARS, k=SESSION_ID_LENGTH))
-        if not any(f.name.startswith(session_id) for f in SESSIONS_DIR.glob("*")):
+        session_id = "".join(random.choices(state.SESSION_ID_CHARS, k=state.SESSION_ID_LENGTH))
+        success_exists = any(f.name.startswith(session_id) for f in state.DATA_DIR.glob("*.csv"))
+        failed_exists = any(f.name.startswith(session_id) for f in state.FAILED_ATTEMPTS_DIR.glob("*.csv"))
+        if not success_exists and not failed_exists:
             return session_id
 
 
@@ -101,127 +117,95 @@ async def write_csv_data(file_path: Path, rows: list[list]):
 # --- API Endpoints ---
 @app.get("/session", response_model=dict[str, str])
 async def get_session_id() -> dict[str, str]:
+    """Generates a new unique session ID and records it by creating a marker file."""
     session_id = generate_unique_session_id()
-    session_marker_file = SESSIONS_DIR / session_id
+    session_marker_file = state.SESSIONS_DIR / session_id
     try:
         async with aiofiles.open(session_marker_file, "w") as f:
             await f.write("")
     except IOError:
-        raise APIException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            error_code="session_creation_failed",
-            detail="Could not create session file.",
-        )
+        raise APIError(500, "session_creation_failed", "Could not create session file.")
     return {"session_id": session_id}
 
 
 @app.post(
     "/record",
     response_model=Union[RecordSuccessResponse, SessionCompleteResponse],
-    responses={
-        400: {"model": ErrorResponse},
-        403: {"model": ErrorResponse},
-        404: {"model": ErrorResponse},
-        500: {"model": ErrorResponse},
-    },
 )
 async def record_data_sample(
     sample: DataSample,
 ) -> Union[RecordSuccessResponse, SessionCompleteResponse]:
-    session_marker_file = SESSIONS_DIR / sample.session_id
+    """Receives, validates, and records key event data. Requires a valid session ID."""
+    session_marker_file = state.SESSIONS_DIR / sample.session_id
     try:
         exists = await asyncio.to_thread(session_marker_file.exists)
-    except Exception as e:
-        import logging
-        logging.exception(f'500! : {e}')
-        raise APIException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            error_code="session_check_failed",
-            detail="Error checking session existence.",
-        )
-    if not exists:
-        raise APIException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            error_code="session_not_found",
-            detail="Session ID not found.",
-        )
+        if not exists:
+            raise APIError(404, "session_not_found", "Session ID not found.")
+    except Exception:
+        raise APIError(500, "internal_error", "Error checking session existence.")
 
     new_rows = [[event.key, event.keyDownTimestamp, event.keyUpTimestamp] for event in sample.key_events]
     key_map = {"space": " ", "enter": ""}
-    typed_string = "".join(
-        [key_map.get(event.key.lower(), event.key) for event in sample.key_events]
-    ).strip()
+    typed_keys = [key_map.get(event.key.lower(), event.key) for event in sample.key_events]
+    typed_string = "".join(typed_keys).strip()
 
-    if typed_string != TARGET_STRING:
-        existing_failures = list(FAILED_ATTEMPTS_DIR.glob(f"{sample.session_id}_*.csv"))
+    if typed_string != state.TARGET_STRING:
+        existing_failures = list(state.FAILED_ATTEMPTS_DIR.glob(f"{sample.session_id}_*.csv"))
         attempt_number = len(existing_failures) + 1
-        failed_file = FAILED_ATTEMPTS_DIR / f"{sample.session_id}_{attempt_number}.csv"
+        failed_file = state.FAILED_ATTEMPTS_DIR / f"{sample.session_id}_{attempt_number}.csv"
         try:
             await write_csv_data(failed_file, new_rows)
         except IOError:
-            raise APIException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                error_code="failed_attempt_log_failed",
-                detail="Validation failed, and could not log the attempt.",
-            )
-        raise APIException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            error_code="validation_failed",
-            detail=f"Typed string did not match target. Attempt {attempt_number} logged.",
+            raise APIError(500, "log_write_failed", "Validation failed, and could not log the attempt.")
+        raise APIError(
+            400,
+            "validation_failed",
+            f"Typed string did not match target. Attempt {attempt_number} logged.",
         )
 
     try:
-        existing_samples = list(DATA_DIR.glob(f"{sample.session_id}_*.csv"))
-        if len(existing_samples) >= MAX_SAMPLES:
-            raise APIException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                error_code="session_complete",
-                detail="This session is complete. No more samples can be recorded.",
-            )
+        existing_samples = list(state.DATA_DIR.glob(f"{sample.session_id}_*.csv"))
+        if len(existing_samples) >= state.MAX_SAMPLES:
+            raise APIError(403, "session_complete", "This session is complete.")
         sample_number = len(existing_samples) + 1
-        session_file = DATA_DIR / f"{sample.session_id}_{sample_number}.csv"
+        session_file = state.DATA_DIR / f"{sample.session_id}_{sample_number}.csv"
         await write_csv_data(session_file, new_rows)
     except IOError as e:
-        raise APIException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            error_code="file_operation_failed",
-            detail=f"File operation failed: {e}",
-        )
+        raise APIError(500, "file_operation_failed", f"File operation failed: {e}")
 
-    if sample_number == MAX_SAMPLES:
-        return SessionCompleteResponse(message=CONGRATULATIONS_MESSAGE)
+    if sample_number == state.MAX_SAMPLES:
+        return SessionCompleteResponse(message=state.CONGRATULATIONS_MESSAGE)
     return RecordSuccessResponse(events_recorded_for_session=sample_number)
 
 
 @cli_app.command()
 def main(
-    data_dir: Path = typer.Option(
-        ".",
-        "--data-dir",
-        "-d",
-        help="The root directory for storing session and data files.",
-        resolve_path=True,
-    ),
-    host: str = typer.Option("127.0.0.1", help="Host to bind the server to."),
-    port: int = typer.Option(8000, help="Port to bind the server to."),
+    data_dir: Annotated[
+        Path,
+        typer.Option(
+            help="The root directory to store session and data files.",
+            dir_okay=True,
+            file_okay=False,
+            resolve_path=True,
+        ),
+    ] = Path("."),
+    host: Annotated[str, typer.Option(help="The host to bind the server to.")] = "127.0.0.1",
+    port: Annotated[int, typer.Option(help="The port to run the server on.")] = 8000,
 ):
-    """
-    Runs the Key Event Recorder FastAPI server.
-    """
-    global DATA_DIR, FAILED_ATTEMPTS_DIR, SESSIONS_DIR
+    """Runs the Key Event Recorder FastAPI server."""
+    typer.secho(f"Starting server...", fg=typer.colors.GREEN)
+    typer.secho(f"Data directory: {data_dir.absolute()}", fg=typer.colors.YELLOW)
 
-    # Configure the global paths based on the CLI argument before the app starts
-    DATA_DIR = data_dir / "collected_data"
-    FAILED_ATTEMPTS_DIR = data_dir / "failed_attempts"
-    SESSIONS_DIR = data_dir / "sessions"
+    # Configure global state with CLI parameters
+    state.DATA_DIR = data_dir / "collected_data"
+    state.FAILED_ATTEMPTS_DIR = data_dir / "failed_attempts"
+    state.SESSIONS_DIR = data_dir / "sessions"
 
-    # Ensure directories exist
-    typer.echo(f"Using data directory: {data_dir.resolve()}")
-    DATA_DIR.mkdir(exist_ok=True)
-    FAILED_ATTEMPTS_DIR.mkdir(exist_ok=True)
-    SESSIONS_DIR.mkdir(exist_ok=True)
+    # Create directories if they don't exist
+    state.DATA_DIR.mkdir(exist_ok=True)
+    state.FAILED_ATTEMPTS_DIR.mkdir(exist_ok=True)
+    state.SESSIONS_DIR.mkdir(exist_ok=True)
 
-    typer.echo(f"Starting server on {host}:{port}")
     uvicorn.run(app, host=host, port=port)
 
 

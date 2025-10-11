@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Typing Pattern Recorder</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            background-color: #f4f7f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #333;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 650px;
+            padding: 40px;
+            box-sizing: border-box;
+            text-align: center;
+        }
+        h1 {
+            font-size: 28px;
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+        p {
+            font-size: 16px;
+            color: #555;
+            margin-bottom: 25px;
+            line-height: 1.6;
+        }
+        .typing-phrase-container {
+            background-color: #e8f0fe;
+            border-left: 5px solid #4a90e2;
+            padding: 20px;
+            margin-bottom: 30px;
+            font-weight: 500;
+            color: #34495e;
+            font-size: 1.1em;
+            text-align: left;
+            border-radius: 4px;
+        }
+        .input-field {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #dcdfe6;
+            border-radius: 8px;
+            font-size: 18px;
+            box-sizing: border-box;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+            text-align: center;
+        }
+        .input-field:focus {
+            border-color: #4a90e2;
+            outline: none;
+            box-shadow: 0 0 0 4px rgba(74, 144, 226, 0.2);
+        }
+        .input-field:disabled {
+            background-color: #f8f9fa;
+            cursor: not-allowed;
+        }
+        .progress-counter {
+            font-size: 16px;
+            color: #7f8c8d;
+            margin-top: 20px;
+            font-weight: 500;
+        }
+        .progress-bar-container {
+            width: 100%;
+            height: 10px;
+            background-color: #e0e0e0;
+            border-radius: 5px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+        .progress-bar {
+            width: 0%;
+            height: 100%;
+            background-color: #27ae60;
+            border-radius: 5px;
+            transition: width 0.5s ease;
+        }
+        .message-box {
+            margin-top: 25px;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 500;
+            display: none; /* Hidden by default */
+        }
+        .message-box.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .message-box.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Typing Pattern Verification</h1>
+        <p>Please type the phrase below exactly as it appears. We will record your unique typing pattern to verify your identity.</p>
+
+        <div class="typing-phrase-container">
+            <span id="typingPhrase"></span>
+        </div>
+
+        <input type="text" id="typingInput" class="input-field" placeholder="Start typing here..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+
+        <div class="progress-counter" id="progressCounter">Sample 0 of 5</div>
+        <div class="progress-bar-container">
+            <div id="progressBar" class="progress-bar"></div>
+        </div>
+
+        <div id="messageBox" class="message-box"></div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+
+            // --- Configuration (from server.py) ---
+            const TYPING_PHRASE = "a full moon illuminates the night sky";
+            const REQUIRED_SAMPLES = 5;
+            const API_BASE_URL = 'http://127.0.0.1:8000'; // Default server URL
+
+            // --- DOM Elements ---
+            const typingPhraseEl = document.getElementById('typingPhrase');
+            const typingInputEl = document.getElementById('typingInput');
+            const messageBox = document.getElementById('messageBox');
+            const progressCounterEl = document.getElementById('progressCounter');
+            const progressBarEl = document.getElementById('progressBar');
+
+            // --- State Variables ---
+            let sessionId = null;
+            let keyEvents = [];
+            let isRecording = false;
+            let successfulSamples = 0;
+            let isSubmitting = false;
+
+            // --- API Functions ---
+            async function getSessionId() {
+                try {
+                    const response = await fetch(`${API_BASE_URL}/session`);
+                    if (!response.ok) {
+                        throw new Error(`Server error: ${response.status}`);
+                    }
+                    const data = await response.json();
+                    return data.session_id;
+                } catch (error) {
+                    console.error("Error fetching session ID:", error);
+                    showMessage("Could not connect to the server. Please ensure it's running and try refreshing.", "error");
+                    typingInputEl.disabled = true;
+                    return null;
+                }
+            }
+
+            async function sendTypingSample() {
+                if (isSubmitting) return;
+                isSubmitting = true;
+
+                // Create the payload matching the Pydantic model in `server.py`
+                const payload = {
+                    session_id: sessionId,
+                    key_events: keyEvents.map(event => ({
+                        key: event.key,
+                        keyDownTimestamp: event.keyDownTimestamp,
+                        keyUpTimestamp: event.keyUpTimestamp
+                    }))
+                };
+
+                try {
+                    const response = await fetch(`${API_BASE_URL}/record`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload),
+                    });
+
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        // Handle structured APIException from FastAPI
+                        throw new Error(data.detail || 'An unknown error occurred.');
+                    }
+
+                    // Handle success
+                    if (data.message) { // Completion message
+                        successfulSamples = REQUIRED_SAMPLES;
+                        showMessage(data.message, 'success');
+                        typingInputEl.disabled = true;
+                    } else if (data.events_recorded_for_session) {
+                        successfulSamples = data.events_recorded_for_session;
+                        showMessage(`Success! Sample ${successfulSamples} of ${REQUIRED_SAMPLES} recorded.`, 'success');
+                    }
+                    updateProgress();
+
+                } catch (error) {
+                    console.error("Error sending typing sample:", error);
+                    showMessage(error.message, "error");
+                    // Do not update progress on failure
+                } finally {
+                    // Reset for the next attempt after a delay
+                    setTimeout(() => {
+                        if (successfulSamples < REQUIRED_SAMPLES) {
+                            resetForNextAttempt();
+                        }
+                        isSubmitting = false;
+                    }, 1500);
+                }
+            }
+
+            // --- UI & State Management ---
+            function showMessage(msg, type) {
+                messageBox.textContent = msg;
+                messageBox.className = `message-box ${type}`;
+                messageBox.style.display = 'block';
+            }
+
+            function hideMessage() {
+                messageBox.style.display = 'none';
+            }
+            
+            function resetForNextAttempt() {
+                typingInputEl.value = '';
+                keyEvents = [];
+                isRecording = false;
+                hideMessage();
+                typingInputEl.focus();
+            }
+
+            function updateProgress() {
+                progressCounterEl.textContent = `Sample ${successfulSamples} of ${REQUIRED_SAMPLES}`;
+                const progressPercentage = (successfulSamples / REQUIRED_SAMPLES) * 100;
+                progressBarEl.style.width = `${progressPercentage}%`;
+            }
+
+            // --- Event Handlers ---
+            const keyState = {}; // To track which keys are currently down
+
+            function handleKeyDown(event) {
+                if (keyState[event.key]) return; // Ignore repeated keydown events from holding a key
+                keyState[event.key] = { keyDownTimestamp: Math.round(performance.now() * 1000000) }; // Nanoseconds
+            }
+
+            function handleKeyUp(event) {
+                if (!keyState[event.key]) return; // Key was pressed before recording started
+
+                // Map special keys to match backend expectations
+                let keyName = event.key;
+                if (keyName === ' ') keyName = 'space';
+                
+                keyEvents.push({
+                    key: keyName,
+                    keyDownTimestamp: keyState[event.key].keyDownTimestamp,
+                    keyUpTimestamp: Math.round(performance.now() * 1000000) // Nanoseconds
+                });
+                
+                delete keyState[event.key]; // Reset state for this key
+            }
+
+            // --- Initialization ---
+            async function init() {
+                typingPhraseEl.textContent = TYPING_PHRASE;
+                updateProgress();
+                typingInputEl.focus();
+
+                sessionId = await getSessionId();
+                if (!sessionId) return; // Stop if session ID failed
+
+                typingInputEl.addEventListener('keydown', handleKeyDown);
+                typingInputEl.addEventListener('keyup', handleKeyUp);
+
+                typingInputEl.addEventListener('input', () => {
+                    // Check if the typed text matches the phrase to trigger submission
+                    if (typingInputEl.value === TYPING_PHRASE) {
+                        // Use a small timeout to ensure the final keyup event is captured
+                        setTimeout(sendTypingSample, 100);
+                    }
+                });
+            }
+
+            init();
+        });
+    </script>
+</body>
+</html>
