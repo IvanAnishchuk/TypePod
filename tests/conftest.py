@@ -60,7 +60,9 @@ def sample_data_incorrect() -> dict:
 
 @pytest.fixture
 def test_data_dir(tmp_path: Path) -> Path:
-    """Creates a temporary root data directory with required subdirectories for a test run."""
+    """
+    Creates a temporary root data directory with subdirectories for each test.
+    """
     root_dir = tmp_path / "test_server_data"
     (root_dir / "collected_data").mkdir(parents=True)
     (root_dir / "failed_attempts").mkdir()
@@ -71,11 +73,19 @@ def test_data_dir(tmp_path: Path) -> Path:
 @pytest.fixture
 def configured_app(test_data_dir: Path, monkeypatch):
     """
-    A fixture that configures the FastAPI app to use a temporary data directory for tests.
-    It uses monkeypatch to temporarily change the global path variables in the server module.
-    """
-    monkeypatch.setattr("key_event_recorder.server.state.DATA_DIR", test_data_dir / "collected_data")
-    monkeypatch.setattr("key_event_recorder.server.state.FAILED_ATTEMPTS_DIR", test_data_dir / "failed_attempts")
-    monkeypatch.setattr("key_event_recorder.server.state.SESSIONS_DIR", test_data_dir / "sessions")
-    return app
+    A fixture that configures the app to use a temporary data directory for tests.
 
+    It uses monkeypatch to temporarily change the global path variables
+    in the server module.
+    """
+    monkeypatch.setattr(
+        "key_event_recorder.server.state.DATA_DIR", test_data_dir / "collected_data"
+    )
+    monkeypatch.setattr(
+        "key_event_recorder.server.state.FAILED_ATTEMPTS_DIR",
+        test_data_dir / "failed_attempts",
+    )
+    monkeypatch.setattr(
+        "key_event_recorder.server.state.SESSIONS_DIR", test_data_dir / "sessions"
+    )
+    return app

@@ -26,17 +26,16 @@ origins = [
     "http://localhost:8080",
     "http://127.0.0.1",
     "http://127.0.0.1:8080",
-    #"null", # Important for opening local file://index.html
-    #None,
+    # "null", # Important for opening local file://index.html
+    # None,
 ]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"], # Allows all methods (GET, POST, etc.)
-    allow_headers=["*"], # Allows all headers
+    allow_methods=["*"],  # Allows all methods (GET, POST, etc.)
+    allow_headers=["*"],  # Allows all headers
 )
-
 
 
 # --- Global State and Constants (to be configured by CLI) ---
@@ -44,9 +43,7 @@ class AppState:
     """A simple class to hold configurable application state."""
 
     TARGET_STRING = "a full moon illuminates the night sky"
-    CONGRATULATIONS_MESSAGE = (
-        "Congratulations! You have successfully completed all samples for this session."
-    )
+    CONGRATULATIONS_MESSAGE = "Congratulations! You have successfully completed all samples for this session."
     MAX_SAMPLES = 5
     DATA_DIR = Path("collected_data")
     FAILED_ATTEMPTS_DIR = Path("failed_attempts")
@@ -156,7 +153,11 @@ async def record_data_sample(
         try:
             await write_csv_data(failed_file, new_rows)
         except IOError:
-            raise APIError(500, "log_write_failed", "Validation failed, and could not log the attempt.")
+            raise APIError(
+                500,
+                "log_write_failed",
+                "Validation failed, and could not log the attempt.",
+            )
         raise APIError(
             400,
             "validation_failed",
@@ -193,7 +194,7 @@ def main(
     port: Annotated[int, typer.Option(help="The port to run the server on.")] = 8000,
 ):
     """Runs the Key Event Recorder FastAPI server."""
-    typer.secho(f"Starting server...", fg=typer.colors.GREEN)
+    typer.secho("Starting server...", fg=typer.colors.GREEN)
     typer.secho(f"Data directory: {data_dir.absolute()}", fg=typer.colors.YELLOW)
 
     # Configure global state with CLI parameters
@@ -211,4 +212,3 @@ def main(
 
 if __name__ == "__main__":
     cli_app()
-

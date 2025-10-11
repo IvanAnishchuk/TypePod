@@ -15,7 +15,9 @@ pytestmark = pytest.mark.asyncio
 
 async def test_get_session_id(configured_app, test_data_dir):
     """Test if the /session endpoint returns a session ID and creates a marker file."""
-    async with AsyncClient(transport=ASGITransport(app=configured_app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=configured_app), base_url="http://test"
+    ) as client:
         response = await client.get("/session")
 
     assert response.status_code == 200
@@ -32,7 +34,9 @@ async def test_get_session_id(configured_app, test_data_dir):
 async def test_get_session_id_io_error(configured_app, monkeypatch):
     """Test server's response when creating a session file fails with an IOError."""
     with patch("aiofiles.open", side_effect=IOError("Disk full")):
-        async with AsyncClient(transport=ASGITransport(app=configured_app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=configured_app), base_url="http://test"
+        ) as client:
             response = await client.get("/session")
 
     assert response.status_code == 500
@@ -41,9 +45,13 @@ async def test_get_session_id_io_error(configured_app, monkeypatch):
     assert "Could not create session file" in error_data["detail"]
 
 
-async def test_record_data_sample_success_and_completion(configured_app, test_data_dir, sample_data_correct):
+async def test_record_data_sample_success_and_completion(
+    configured_app, test_data_dir, sample_data_correct
+):
     """Test the full lifecycle: 5 successful recordings, then a 403 error."""
-    async with AsyncClient(transport=ASGITransport(app=configured_app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=configured_app), base_url="http://test"
+    ) as client:
         get_response = await client.get("/session")
         assert get_response.status_code == 200
         session_id = get_response.json()["session_id"]
@@ -58,7 +66,9 @@ async def test_record_data_sample_success_and_completion(configured_app, test_da
                 assert response.status_code == 200
                 assert response.json() == {"message": state.CONGRATULATIONS_MESSAGE}
 
-        data_files = list((test_data_dir / "collected_data").glob(f"{session_id}_*.csv"))
+        data_files = list(
+            (test_data_dir / "collected_data").glob(f"{session_id}_*.csv")
+        )
         assert len(data_files) == state.MAX_SAMPLES
 
         # Test one more attempt after completion
@@ -71,7 +81,9 @@ async def test_record_data_sample_success_and_completion(configured_app, test_da
 async def test_record_data_sample_invalid_session(configured_app, sample_data_correct):
     """Test recording with a session ID that was never created."""
     sample_data_correct["session_id"] = "invald"
-    async with AsyncClient(transport=ASGITransport(app=configured_app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=configured_app), base_url="http://test"
+    ) as client:
         response = await client.post("/record", json=sample_data_correct)
 
     print(response)
@@ -81,9 +93,13 @@ async def test_record_data_sample_invalid_session(configured_app, sample_data_co
     assert error_data["error_code"] == "session_not_found"
 
 
-async def test_record_data_sample_validation_fail(configured_app, test_data_dir, sample_data_incorrect):
+async def test_record_data_sample_validation_fail(
+    configured_app, test_data_dir, sample_data_incorrect
+):
     """Test a failed validation creates a log in the correct temporary directory."""
-    async with AsyncClient(transport=ASGITransport(app=configured_app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=configured_app), base_url="http://test"
+    ) as client:
         get_response = await client.get("/session")
         session_id = get_response.json()["session_id"]
         sample_data_incorrect["session_id"] = session_id
@@ -102,9 +118,13 @@ async def test_record_data_sample_validation_fail(configured_app, test_data_dir,
     assert len(data_files) == 0
 
 
-async def test_record_data_failed_attempt_io_error(configured_app, sample_data_incorrect):
+async def test_record_data_failed_attempt_io_error(
+    configured_app, sample_data_incorrect
+):
     """Test server's response when logging a failed attempt fails with an IOError."""
-    async with AsyncClient(transport=ASGITransport(app=configured_app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=configured_app), base_url="http://test"
+    ) as client:
         get_response = await client.get("/session")
         session_id = get_response.json()["session_id"]
         sample_data_incorrect["session_id"] = session_id
@@ -121,7 +141,9 @@ async def test_record_data_failed_attempt_io_error(configured_app, sample_data_i
 
 async def test_record_data_success_io_error(configured_app, sample_data_correct):
     """Test server's response when saving a successful sample fails with an IOError."""
-    async with AsyncClient(transport=ASGITransport(app=configured_app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=configured_app), base_url="http://test"
+    ) as client:
         get_response = await client.get("/session")
         session_id = get_response.json()["session_id"]
         sample_data_correct["session_id"] = session_id
@@ -137,8 +159,12 @@ async def test_record_data_success_io_error(configured_app, sample_data_correct)
 
 
 async def test_session_check_internal_error(configured_app, sample_data_correct):
-    """Test server's response when checking for a session file raises an unexpected error."""
-    async with AsyncClient(transport=ASGITransport(app=configured_app), base_url="http://test") as client:
+    """
+    Unexpected error in session checking.
+    """
+    async with AsyncClient(
+        transport=ASGITransport(app=configured_app), base_url="http://test"
+    ) as client:
         get_response = await client.get("/session")
         session_id = get_response.json()["session_id"]
         sample_data_correct["session_id"] = session_id

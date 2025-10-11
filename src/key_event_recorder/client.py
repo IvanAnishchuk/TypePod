@@ -59,9 +59,7 @@ async def post_data(client: httpx.AsyncClient, session_id: str, base_url: str):
 @app.command()
 def record(
     count: int = typer.Option(5, "--count", "-c", help="Number of samples to record."),
-    base_url: str = typer.Option(
-        "http://127.0.0.1:8000", "--base-url", help="Base URL of the server."
-    ),
+    base_url: str = typer.Option("http://127.0.0.1:8000", "--base-url", help="Base URL of the server."),
 ):
     """
     Starts a session and records a specified number of data samples.
@@ -109,7 +107,7 @@ def record(
             console.print(f"Please ensure the server is running. Details: {e}")
             raise typer.Exit(code=1)
         except httpx.HTTPStatusError as e:
-            console.print(f"[bold red]Error:[/] Failed to record data.")
+            console.print("[bold red]Error:[/] Failed to record data.")
             error_json = e.response.json()
             error_code = error_json.get("error_code", "unknown_error")
             detail = error_json.get("detail", e.response.text)
@@ -129,4 +127,3 @@ def record(
 
 if __name__ == "__main__":
     app()
-

@@ -216,7 +216,7 @@
                     isSubmitting = false;
                 }
             }
-            
+
             // --- UI & State Management ---
             function showMessage(msg, type) {
                 messageBox.innerHTML = msg;
@@ -227,7 +227,7 @@
             function hideMessage() {
                 messageBox.style.display = 'none';
             }
-            
+
             function resetForNextAttempt() {
                 typingInputEl.value = '';
                 keyEvents = [];
@@ -277,7 +277,7 @@
                     }
                     return;
                 }
-                
+
                 if (keyState[event.key]) return;
                 keyState[event.key] = { keyDownTimestamp: Math.round(performance.now() * 1000000) };
             }
@@ -288,7 +288,7 @@
                 keyEvents.push({ key: keyName, keyDownTimestamp: keyState[event.key].keyDownTimestamp, keyUpTimestamp: Math.round(performance.now() * 1000000) });
                 delete keyState[event.key];
             }
-            
+
             function handleCharacterHighlight() {
                 const typedText = typingInputEl.value;
                 const phraseChars = document.querySelectorAll('#typingPhrase span');
@@ -307,7 +307,7 @@
                 typingInputEl.addEventListener('keydown', handleKeyDown);
                 typingInputEl.addEventListener('keyup', handleKeyUp);
                 typingInputEl.addEventListener('input', handleCharacterHighlight);
-                
+
                 typingInputEl.addEventListener('input', () => {
                     if (typingInputEl.value.length > TYPING_PHRASE.length) {
                          setTimeout(sendTypingSample, 100);

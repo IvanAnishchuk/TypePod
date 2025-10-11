@@ -28,7 +28,7 @@ dev = [
 ]
 
 [tool.ruff]
-line-length = 88
+line-length = 119
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I"]
@@ -37,7 +37,7 @@ select = ["E", "F", "W", "I"]
 quote-style = "double"
 
 [tool.pylint.main]
-max-line-length = 88
+max-line-length = 119
 disable = ["C0114", "C0115", "C0116", "R0903"] # Disabling docstrings and too-few-public-methods
 
 [tool.pytest.ini_options]

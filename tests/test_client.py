@@ -2,10 +2,10 @@
 
 import httpx
 import pytest
-from typer.testing import CliRunner
 
 # Corrected import path relative to the project root
 from key_event_recorder.client import app
+from typer.testing import CliRunner
 
 # Use a synchronous runner for Typer tests, but mark tests as async for httpx mocking
 runner = CliRunner()
@@ -23,7 +23,9 @@ async def test_client_full_run_success(mocker):
         ),
     )
     post_responses = [
-        mocker.AsyncMock(status_code=200, json=lambda i=i: {"events_recorded_for_session": i})
+        mocker.AsyncMock(
+            status_code=200, json=lambda i=i: {"events_recorded_for_session": i}
+        )
         for i in range(1, 5)
     ]
     post_responses.append(
@@ -36,7 +38,10 @@ async def test_client_full_run_success(mocker):
 
     assert result.exit_code == 0
     assert "Successfully retrieved session ID: testid" in result.stdout
-    assert "Attempt 1/5... Success! Recorded samples for session testid: 1" in result.stdout
+    assert (
+        "Attempt 1/5... Success! Recorded samples for session testid: 1"
+        in result.stdout
+    )
     assert "Attempt 5/5... Success! Congratulations!" in result.stdout
     assert "Session complete." in result.stdout
     assert mock_get.call_count == 1
@@ -69,7 +74,9 @@ async def test_client_server_validation_error(mocker):
 
     assert result.exit_code == 1
     assert "Error Code: validation_failed" in result.stdout
-    assert "Detail: Typed string did not match target. Attempt 1 logged." in result.stdout
+    assert (
+        "Detail: Typed string did not match target. Attempt 1 logged." in result.stdout
+    )
 
 
 @pytest.mark.asyncio
@@ -86,7 +93,10 @@ async def test_client_server_session_not_found(mocker):
         "httpx.AsyncClient.post",
         return_value=mocker.AsyncMock(
             status_code=404,
-            json=lambda: {"error_code": "session_not_found", "detail": "Session ID not found."},
+            json=lambda: {
+                "error_code": "session_not_found",
+                "detail": "Session ID not found.",
+            },
             text="Session ID not found.",
         ),
     )
@@ -101,9 +111,10 @@ async def test_client_server_session_not_found(mocker):
 @pytest.mark.xfail(True, reason="failing generated code")
 async def test_client_connection_error(mocker):
     """Test how the client handles a network connection error."""
-    mocker.patch("httpx.AsyncClient.get", side_effect=httpx.ConnectError("Connection failed."))
+    mocker.patch(
+        "httpx.AsyncClient.get", side_effect=httpx.ConnectError("Connection failed.")
+    )
     result = runner.invoke(app, ["--base-url", MOCK_SERVER_URL])
 
     assert result.exit_code == 1
     assert f"Could not connect to the server at {MOCK_SERVER_URL}" in result.stdout
-
