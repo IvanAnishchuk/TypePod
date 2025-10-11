@@ -1,0 +1,85 @@
+"""Tests for the FastAPI server, ensuring test isolation with temporary directories."""
+
+import asyncio
+
+import pytest
+from httpx import ASGITransport, AsyncClient
+
+# Import constants used for test logic
+from key_event_recorder.server import CONGRATULATIONS_MESSAGE, MAX_SAMPLES
+
+# Mark all tests in this module as async
+pytestmark = pytest.mark.asyncio
+
+
+async def test_get_session_id(configured_app, test_data_dir):
+    """Test if the /session endpoint returns a session ID and creates a marker file."""
+    async with AsyncClient(transport=ASGITransport(app=configured_app), base_url="http://test") as client:
+        response = await client.get("/session")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert "session_id" in data
+    session_id = data["session_id"]
+    assert len(session_id) == 6
+
+    # Verify that the session marker file was created in the temporary directory
+    session_marker_file = test_data_dir / "sessions" / session_id
+    assert await asyncio.to_thread(session_marker_file.is_file)
+
+
+async def test_record_data_sample_success_and_completion(configured_app, test_data_dir, sample_data_correct):
+    """Test the full lifecycle: 5 successful recordings, then a 403 error."""
+    async with AsyncClient(transport=ASGITransport(app=configured_app), base_url="http://test") as client:
+        get_response = await client.get("/session")
+        assert get_response.status_code == 200
+        session_id = get_response.json()["session_id"]
+        sample_data_correct["session_id"] = session_id
+
+        for i in range(1, MAX_SAMPLES + 1):
+            response = await client.post("/record", json=sample_data_correct)
+            if i < MAX_SAMPLES:
+                assert response.status_code == 200
+                assert response.json() == {"events_recorded_for_session": i}
+            else:
+                assert response.status_code == 200
+                assert response.json() == {"message": CONGRATULATIONS_MESSAGE}
+
+        data_files = list((test_data_dir / "collected_data").glob(f"{session_id}_*.csv"))
+        assert len(data_files) == MAX_SAMPLES
+
+        final_response = await client.post("/record", json=sample_data_correct)
+        assert final_response.status_code == 403
+        error_data = final_response.json()
+        assert error_data["error_code"] == "session_complete"
+
+
+async def test_record_data_sample_invalid_session(configured_app, sample_data_correct):
+    """Test recording with a session ID that was never created."""
+    sample_data_correct["session_id"] = "invald"
+    async with AsyncClient(transport=ASGITransport(app=configured_app), base_url="http://test") as client:
+        response = await client.post("/record", json=sample_data_correct)
+
+    print(response)
+    print(response.__dict__)
+    assert response.status_code == 404
+    assert response.json()["error_code"] == "session_not_found"
+
+
+async def test_record_data_sample_validation_fail(configured_app, test_data_dir, sample_data_incorrect):
+    """Test a failed validation creates a log in the correct temporary directory."""
+    async with AsyncClient(transport=ASGITransport(app=configured_app), base_url="http://test") as client:
+        get_response = await client.get("/session")
+        session_id = get_response.json()["session_id"]
+        sample_data_incorrect["session_id"] = session_id
+        response = await client.post("/record", json=sample_data_incorrect)
+
+    assert response.status_code == 400
+    assert response.json()["error_code"] == "validation_failed"
+
+    failed_files = list((test_data_dir / "failed_attempts").glob(f"{session_id}_*.csv"))
+    assert len(failed_files) == 1
+
+    data_files = list((test_data_dir / "collected_data").glob(f"{session_id}_*.csv"))
+    assert len(data_files) == 0
+

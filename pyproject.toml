@@ -1,0 +1,44 @@
+[project]
+name = "key-event-recorder"
+version = "0.1.0"
+description = "A FastAPI server and Typer client for recording keyboard event data."
+authors = [{ name = "Your Name", email = "you@example.com" }]
+requires-python = ">=3.8"
+dependencies = [
+    "fastapi",
+    "typer[all]",
+    "httpx[http3]",
+    "uvicorn[standard,http3]",
+    "pydantic",
+    "aiofiles",
+    "python-multipart",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff",
+    "pre-commit",
+    "pylint",
+    "pytest",
+    "pytest-cov",
+    "pytest-asyncio",
+    "pytest-mock",
+    "anyio",
+    "respx", # A utility for mocking out httpx requests in tests
+]
+
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.pylint.main]
+max-line-length = 88
+disable = ["C0114", "C0115", "C0116", "R0903"] # Disabling docstrings and too-few-public-methods
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]

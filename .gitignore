@@ -1,3 +1,10 @@
+# local stuff
+src/key_event_recorder.egg-info
+collected_data
+failed_attempts
+sessions
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
