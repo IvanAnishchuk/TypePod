@@ -195,7 +195,12 @@
 
                     if (data.message) {
                         successfulSamples = REQUIRED_SAMPLES;
-                        const finalMessage = `<strong>Session Complete!</strong><br>Your Session ID is: <strong>${sessionId}</strong><br><br>Please remember to fill out the release form and include this Session ID on it.`;
+                        // --- Link added to this message ---
+                        const finalMessage = `
+                            <strong>Session Complete!</strong><br>
+                            Your Session ID is: <strong>${sessionId}</strong><br><br>
+                            Please fill out the <a href="https://forms.gle/3HtPpoSSfpQtNio77" target="_blank">release form</a> and include this Session ID on it.
+                        `;
                         showMessage(finalMessage, 'success');
                     } else {
                         successfulSamples = data.events_recorded_for_session;
@@ -260,16 +265,14 @@
             // --- Event Handlers ---
             const keyState = {};
             function handleKeyDown(event) {
-                // Prevent navigation keys
                 if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) {
                     event.preventDefault();
                     return;
                 }
 
-                // Submit on Enter key
                 if (event.key === 'Enter') {
                     event.preventDefault();
-                    if (typingInputEl.value.length > 0) { // Only submit if there's content
+                    if (typingInputEl.value.length > 0) {
                          setTimeout(sendTypingSample, 100);
                     }
                     return;
@@ -306,7 +309,6 @@
                 typingInputEl.addEventListener('input', handleCharacterHighlight);
                 
                 typingInputEl.addEventListener('input', () => {
-                    // Submit if user types too many characters
                     if (typingInputEl.value.length > TYPING_PHRASE.length) {
                          setTimeout(sendTypingSample, 100);
                     } else if (typingInputEl.value === TYPING_PHRASE) {
