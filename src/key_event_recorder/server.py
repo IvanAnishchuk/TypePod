@@ -139,10 +139,10 @@ async def record_data_sample(
     session_marker_file = state.SESSIONS_DIR / sample.session_id
     try:
         exists = await asyncio.to_thread(session_marker_file.exists)
-        if not exists:
-            raise APIError(404, "session_not_found", "Session ID not found.")
     except Exception:
         raise APIError(500, "internal_error", "Error checking session existence.")
+    if not exists:
+        raise APIError(404, "session_not_found", "Session ID not found.")
 
     new_rows = [[event.key, event.keyDownTimestamp, event.keyUpTimestamp] for event in sample.key_events]
     key_map = {"space": " ", "enter": ""}

@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 # Import the app and constants to be used in fixtures
-from key_event_recorder.server import TARGET_STRING, app
+from key_event_recorder.server import app, state
 
 
 @pytest.fixture
@@ -18,7 +18,7 @@ def sample_data_correct() -> dict:
     """
     events = []
     base_time = time.time_ns()
-    for char in TARGET_STRING:
+    for char in state.TARGET_STRING:
         key = "space" if char == " " else char
         keydown_time = base_time + random.randint(50_000_000, 150_000_000)
         keyup_time = keydown_time + random.randint(30_000_000, 80_000_000)
@@ -74,8 +74,8 @@ def configured_app(test_data_dir: Path, monkeypatch):
     A fixture that configures the FastAPI app to use a temporary data directory for tests.
     It uses monkeypatch to temporarily change the global path variables in the server module.
     """
-    monkeypatch.setattr("key_event_recorder.server.DATA_DIR", test_data_dir / "collected_data")
-    monkeypatch.setattr("key_event_recorder.server.FAILED_ATTEMPTS_DIR", test_data_dir / "failed_attempts")
-    monkeypatch.setattr("key_event_recorder.server.SESSIONS_DIR", test_data_dir / "sessions")
+    monkeypatch.setattr("key_event_recorder.server.state.DATA_DIR", test_data_dir / "collected_data")
+    monkeypatch.setattr("key_event_recorder.server.state.FAILED_ATTEMPTS_DIR", test_data_dir / "failed_attempts")
+    monkeypatch.setattr("key_event_recorder.server.state.SESSIONS_DIR", test_data_dir / "sessions")
     return app
 
