@@ -48,6 +48,16 @@
             font-size: 1.1em;
             text-align: left;
             border-radius: 4px;
+            /* Added for character highlighting */
+            letter-spacing: 1px; 
+        }
+        /* Style for individual characters */
+        .typing-phrase-container span {
+            transition: background-color 0.3s ease;
+        }
+        .typing-phrase-container span.highlight {
+            background-color: #f1c40f; /* Yellow highlight */
+            border-radius: 3px;
         }
         .input-field {
             width: 100%;
@@ -96,6 +106,8 @@
             font-size: 15px;
             font-weight: 500;
             display: none; /* Hidden by default */
+            text-align: left;
+            line-height: 1.6;
         }
         .message-box.success {
             background-color: #d4edda;
@@ -115,10 +127,10 @@
         <p>Please type the phrase below exactly as it appears. We will record your unique typing pattern to verify your identity.</p>
 
         <div class="typing-phrase-container">
-            <span id="typingPhrase"></span>
+            <div id="typingPhrase"></div>
         </div>
 
-        <input type="text" id="typingInput" class="input-field" placeholder="Start typing here..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+        <input type="text" id="typingInput" class="input-field" placeholder="Start typing here..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" autofocus>
 
         <div class="progress-counter" id="progressCounter">Sample 0 of 5</div>
         <div class="progress-bar-container">
@@ -134,7 +146,7 @@
             // --- Configuration (from server.py) ---
             const TYPING_PHRASE = "a full moon illuminates the night sky";
             const REQUIRED_SAMPLES = 5;
-            const API_BASE_URL = 'http://127.0.0.1:8000'; // Default server URL
+            const API_BASE_URL = 'http://127.0.0.1:8000'; 
 
             // --- DOM Elements ---
             const typingPhraseEl = document.getElementById('typingPhrase');
@@ -146,7 +158,6 @@
             // --- State Variables ---
             let sessionId = null;
             let keyEvents = [];
-            let isRecording = false;
             let successfulSamples = 0;
             let isSubmitting = false;
 
@@ -154,9 +165,7 @@
             async function getSessionId() {
                 try {
                     const response = await fetch(`${API_BASE_URL}/session`);
-                    if (!response.ok) {
-                        throw new Error(`Server error: ${response.status}`);
-                    }
+                    if (!response.ok) throw new Error(`Server error: ${response.status}`);
                     const data = await response.json();
                     return data.session_id;
                 } catch (error) {
@@ -171,7 +180,6 @@
                 if (isSubmitting) return;
                 isSubmitting = true;
 
-                // Create the payload matching the Pydantic model in `server.py`
                 const payload = {
                     session_id: sessionId,
                     key_events: keyEvents.map(event => ({
@@ -191,14 +199,17 @@
                     const data = await response.json();
 
                     if (!response.ok) {
-                        // Handle structured APIException from FastAPI
                         throw new Error(data.detail || 'An unknown error occurred.');
                     }
 
-                    // Handle success
-                    if (data.message) { // Completion message
+                    if (data.message) { // Final completion message
                         successfulSamples = REQUIRED_SAMPLES;
-                        showMessage(data.message, 'success');
+                        const finalMessage = `
+                            <strong>Session Complete!</strong><br>
+                            Your Session ID is: <strong>${sessionId}</strong><br><br>
+                            Please remember to fill out the release form and include this Session ID on it.
+                        `;
+                        showMessage(finalMessage, 'success');
                         typingInputEl.disabled = true;
                     } else if (data.events_recorded_for_session) {
                         successfulSamples = data.events_recorded_for_session;
@@ -208,22 +219,20 @@
 
                 } catch (error) {
                     console.error("Error sending typing sample:", error);
-                    showMessage(error.message, "error");
-                    // Do not update progress on failure
+                    showMessage(`<strong>Validation Error:</strong> ${error.message} Please try again.`, "error");
                 } finally {
-                    // Reset for the next attempt after a delay
                     setTimeout(() => {
                         if (successfulSamples < REQUIRED_SAMPLES) {
                             resetForNextAttempt();
                         }
                         isSubmitting = false;
-                    }, 1500);
+                    }, 2000); // Increased delay to read messages
                 }
             }
-
+            
             // --- UI & State Management ---
             function showMessage(msg, type) {
-                messageBox.textContent = msg;
+                messageBox.innerHTML = msg; // Use innerHTML to render the <strong> tags
                 messageBox.className = `message-box ${type}`;
                 messageBox.style.display = 'block';
             }
@@ -235,8 +244,11 @@
             function resetForNextAttempt() {
                 typingInputEl.value = '';
                 keyEvents = [];
-                isRecording = false;
                 hideMessage();
+                // Reset character highlights
+                document.querySelectorAll('#typingPhrase span').forEach(span => {
+                    span.classList.remove('highlight');
+                });
                 typingInputEl.focus();
             }
 
@@ -247,45 +259,61 @@
             }
 
             // --- Event Handlers ---
-            const keyState = {}; // To track which keys are currently down
+            const keyState = {};
 
             function handleKeyDown(event) {
-                if (keyState[event.key]) return; // Ignore repeated keydown events from holding a key
-                keyState[event.key] = { keyDownTimestamp: Math.round(performance.now() * 1000000) }; // Nanoseconds
+                if (keyState[event.key]) return; 
+                keyState[event.key] = { keyDownTimestamp: Math.round(performance.now() * 1000000) };
             }
 
             function handleKeyUp(event) {
-                if (!keyState[event.key]) return; // Key was pressed before recording started
+                if (!keyState[event.key]) return;
 
-                // Map special keys to match backend expectations
                 let keyName = event.key;
                 if (keyName === ' ') keyName = 'space';
                 
                 keyEvents.push({
                     key: keyName,
                     keyDownTimestamp: keyState[event.key].keyDownTimestamp,
-                    keyUpTimestamp: Math.round(performance.now() * 1000000) // Nanoseconds
+                    keyUpTimestamp: Math.round(performance.now() * 1000000)
                 });
                 
-                delete keyState[event.key]; // Reset state for this key
+                delete keyState[event.key];
+            }
+            
+            function handleCharacterHighlight() {
+                const typedText = typingInputEl.value;
+                const phraseChars = document.querySelectorAll('#typingPhrase span');
+
+                phraseChars.forEach((span, index) => {
+                    if (index < typedText.length) {
+                        span.classList.add('highlight');
+                    } else {
+                        span.classList.remove('highlight');
+                    }
+                });
             }
 
             // --- Initialization ---
             async function init() {
-                typingPhraseEl.textContent = TYPING_PHRASE;
+                // Wrap each character of the phrase in a <span> for highlighting
+                typingPhraseEl.innerHTML = TYPING_PHRASE.split('').map(char => `<span>${char}</span>`).join('');
+                
                 updateProgress();
-                typingInputEl.focus();
+                typingInputEl.focus(); // Auto-focus on load
 
                 sessionId = await getSessionId();
-                if (!sessionId) return; // Stop if session ID failed
+                if (!sessionId) return;
 
                 typingInputEl.addEventListener('keydown', handleKeyDown);
                 typingInputEl.addEventListener('keyup', handleKeyUp);
+                
+                // Add listener for both input and keyup for highlighting
+                typingInputEl.addEventListener('input', handleCharacterHighlight);
+                typingInputEl.addEventListener('keyup', handleCharacterHighlight);
 
                 typingInputEl.addEventListener('input', () => {
-                    // Check if the typed text matches the phrase to trigger submission
                     if (typingInputEl.value === TYPING_PHRASE) {
-                        // Use a small timeout to ensure the final keyup event is captured
                         setTimeout(sendTypingSample, 100);
                     }
                 });
