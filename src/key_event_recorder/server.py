@@ -22,12 +22,7 @@ app = FastAPI(title="Key Event Recorder API")
 # WARNING: This is a permissive policy for development. For production, you should
 # restrict the origins to your actual frontend domain.
 origins = [
-    "http://localhost",
-    "http://localhost:8080",
-    "http://127.0.0.1",
-    "http://127.0.0.1:8080",
-    # "null", # Important for opening local file://index.html
-    # None,
+    "https://typepod.l5.fyi",
 ]
 app.add_middleware(
     CORSMiddleware,
