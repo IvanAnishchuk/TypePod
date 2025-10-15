@@ -7,7 +7,8 @@ from pathlib import Path
 import pytest
 
 # Import the app and constants to be used in fixtures
-from key_event_recorder.server import app, state
+from key_event_recorder.server import app
+
 TARGET_STRING = "a full moon illuminates the night sky"
 
 
