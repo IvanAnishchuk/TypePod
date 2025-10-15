@@ -1,0 +1,9 @@
+# These are supported funding model platforms
+
+github:
+      - "IvanAnishchuk"
+patreon: # Replace with a single Patreon username
+custom:
+      - "ethereum:0x17ac0B98b4B5a26E3a6e67DB20Cf2A38aAAEd5B6" # Replace with your actual Ethereum address
+      - "ethereum:ivan-official.eth" # Optional: if you have an ENS name
+      - "https://etherscan.io/address/0x17ac0B98b4B5a26E3a6e67DB20Cf2A38aAAEd5B6"
