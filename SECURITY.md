@@ -12,10 +12,4 @@ currently being supported with security updates.
 
 ## Reporting a Vulnerability
 
-TODO: github should have a form?
-
-Use this section to tell people how to report a vulnerability.
-
-Tell them where to go, how often they can expect to get an update on a
-reported vulnerability, what to expect if the vulnerability is accepted or
-declined, etc.
+Report vulnerabilities using GitHub security reporting form. Do not open a public issue!
