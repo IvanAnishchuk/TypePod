@@ -1,3 +1,8 @@
+
+
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/11307/badge)](https://www.bestpractices.dev/projects/11307)
+
+
 ## Key Event Recorder API Project
 
 This project demonstrates a modern, asynchronous Python development workflow with a practical client-server application for recording keyboard event data. It is built upon the principles outlined in the "opinionated python introduction."
