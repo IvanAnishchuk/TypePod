@@ -1,9 +1,9 @@
 [project]
 name = "key-event-recorder"
 version = "0.1.0"
-description = "A FastAPI server and Typer client for recording keyboard event data."
-authors = [{ name = "Your Name", email = "you@example.com" }]
-requires-python = ">=3.8"
+description = "Data collection tool for keystroke pattern analysis."
+authors = [{ name = "Ivan Anishchuk", email = "ivan@agorism.org" }]
+requires-python = ">=3.12"
 dependencies = [
     "fastapi",
     "typer[all]",

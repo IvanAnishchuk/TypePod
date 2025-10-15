@@ -8,6 +8,7 @@ import pytest
 
 # Import the app and constants to be used in fixtures
 from key_event_recorder.server import app, state
+TARGET_STRING = "a full moon illuminates the night sky"
 
 
 @pytest.fixture
@@ -18,7 +19,7 @@ def sample_data_correct() -> dict:
     """
     events = []
     base_time = time.time_ns()
-    for char in state.TARGET_STRING:
+    for char in TARGET_STRING:
         key = "space" if char == " " else char
         keydown_time = base_time + random.randint(50_000_000, 150_000_000)
         keyup_time = keydown_time + random.randint(30_000_000, 80_000_000)
