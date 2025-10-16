@@ -1,12 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Typing Pattern Recorder</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
-        /* Basic layout */
         body {
             font-family: 'Roboto', sans-serif;
             margin: 0;
@@ -18,7 +17,6 @@
             color: #333;
             transition: background-color 0.3s ease, color 0.3s ease;
         }
-
         .container {
             background-color: #ffffff;
             border-radius: 12px;
@@ -30,7 +28,6 @@
             text-align: center;
             transition: background-color 0.3s ease;
         }
-
         h1 {
             font-size: 28px;
             font-weight: 700;
@@ -38,7 +35,6 @@
             margin-bottom: 15px;
             transition: color 0.3s ease;
         }
-
         p {
             font-size: 16px;
             color: #555;
@@ -46,7 +42,6 @@
             line-height: 1.6;
             transition: color 0.3s ease;
         }
-
         .typing-phrase-container {
             background-color: #e8f0fe;
             border-left: 5px solid #4a90e2;
@@ -60,26 +55,14 @@
             letter-spacing: 1px;
             transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
         }
-
         .typing-phrase-container span {
             transition: background-color 0.3s ease;
         }
-
         .typing-phrase-container span.highlight {
             background-color: #f1c40f;
-            color: #333;
+            color: #333; /* Ensure text is readable on highlight */
             border-radius: 3px;
         }
-
-        /* visually hidden label for accessibility */
-        .sr-only {
-            position: absolute !important;
-            height: 1px; width: 1px;
-            overflow: hidden;
-            clip: rect(1px, 1px, 1px, 1px);
-            white-space: nowrap; /* added line */
-        }
-
         .input-field {
             width: 100%;
             padding: 15px;
@@ -92,19 +75,16 @@
             transition: border-color 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease, color 0.3s ease;
             text-align: center;
         }
-
         .input-field:focus {
             border-color: #4a90e2;
             outline: none;
             box-shadow: 0 0 0 4px rgba(74, 144, 226, 0.2);
         }
-
         .input-field:disabled {
             background-color: #f8f9fa;
             cursor: not-allowed;
             color: #aaa;
         }
-
         .progress-counter {
             font-size: 16px;
             color: #7f8c8d;
@@ -112,7 +92,6 @@
             font-weight: 500;
             transition: color 0.3s ease;
         }
-
         .progress-bar-container {
             width: 100%;
             height: 10px;
@@ -122,7 +101,6 @@
             overflow: hidden;
             transition: background-color 0.3s ease;
         }
-
         .progress-bar {
             width: 0%;
             height: 100%;
@@ -130,7 +108,6 @@
             border-radius: 5px;
             transition: width 0.5s ease;
         }
-
         .message-box {
             margin-top: 25px;
             padding: 15px;
@@ -152,12 +129,6 @@
             border: 1px solid #f5c6cb;
         }
 
-        /* small helper text shown while submitting */
-        .submitting {
-            font-size: 14px;
-            color: #4a90e2;
-        }
-
         /* --- ADDED: Dark Mode Theme --- */
         @media (prefers-color-scheme: dark) {
             body {
@@ -168,8 +139,12 @@
                 background-color: #2c2c2c;
                 box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
             }
-            h1 { color: #ffffff; }
-            p { color: #b0b0b0; }
+            h1 {
+                color: #ffffff;
+            }
+            p {
+                color: #b0b0b0;
+            }
             .typing-phrase-container {
                 background-color: #3a3a4a;
                 border-left: 5px solid #5a67d8;
@@ -188,8 +163,12 @@
                 background-color: #252525;
                 color: #666;
             }
-            .progress-counter { color: #888; }
-            .progress-bar-container { background-color: #444; }
+            .progress-counter {
+                color: #888;
+            }
+            .progress-bar-container {
+                background-color: #444;
+            }
             .message-box.success {
                 background-color: #1c3d24;
                 color: #a7f3d0;
@@ -201,146 +180,53 @@
                 border: 1px solid #8c2d30;
             }
         }
-
-        /* Respect users who prefer reduced motion */
-        @media (prefers-reduced-motion: reduce) {
-            * {
-                transition: none !important;
-                animation-duration: 0s !important;
-                animation-iteration-count: 1 !important;
-            }
-        }
     </style>
 </head>
 <body>
-    <div class="container" role="main">
+    <div class="container">
         <h1>Typing Pattern Verification</h1>
         <p>Please type the phrase below exactly as it appears. We will record your unique typing pattern to verify your identity.</p>
 
-        <div class="typing-phrase-container" aria-hidden="false">
-            <div id="typingPhrase" aria-label="Typing phrase (each character is wrapped for highlight)"></div>
+        <div class="typing-phrase-container">
+            <div id="typingPhrase"></div>
         </div>
 
-        <label for="typingInput" class="sr-only">Type the phrase exactly as shown</label>
-        <input type="text" id="typingInput" class="input-field" placeholder="Start typing here..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+        <input type="text" id="typingInput" class="input-field" placeholder="Start typing here..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" autofocus>
 
-        <div class="progress-counter" id="progressCounter" aria-live="polite">Sample 0 of 5</div>
-        <div class="progress-bar-container" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <div class="progress-counter" id="progressCounter">Sample 0 of 5</div>
+        <div class="progress-bar-container">
             <div id="progressBar" class="progress-bar"></div>
         </div>
 
-        <!-- messageBox uses aria-live so screen readers will announce changes -->
-        <div id="messageBox" class="message-box" role="status" aria-live="polite"></div>
+        <div id="messageBox" class="message-box"></div>
     </div>
 
     <script>
-        (function () {
-            // Configuration
+        document.addEventListener('DOMContentLoaded', () => {
             const TYPING_PHRASE = "a full moon illuminates the night sky";
             const REQUIRED_SAMPLES = 5;
             const API_BASE_URL = 'https://typepod.l5.fyi';
-            const FETCH_TIMEOUT_MS = 8000; // timeout for network calls
 
-            // Elements
             const typingPhraseEl = document.getElementById('typingPhrase');
             const typingInputEl = document.getElementById('typingInput');
             const messageBox = document.getElementById('messageBox');
             const progressCounterEl = document.getElementById('progressCounter');
             const progressBarEl = document.getElementById('progressBar');
 
-            // State
             let sessionId = null;
             let keyEvents = [];
             let successfulSamples = 0;
             let isSubmitting = false;
-            let composing = false; // IME composition guard
 
-            // Use high-resolution nanoseconds based on performance.now().
-            // Timestamps are relative to the page/performance time origin (i.e., performance.now()).
-            // We multiply performance.now() (ms float) by 1e6 to get nanoseconds and round to integer.
-            // Note: using relative nanoseconds avoids huge integers; this is safe for typical session durations.
-            function nowNs() {
-                return Math.round(performance.now() * 1e6);
-            }
-
-            // Helper: fetch with timeout using AbortController
-            async function fetchWithTimeout(url, options = {}, timeout = FETCH_TIMEOUT_MS) {
-                const controller = new AbortController();
-                const id = setTimeout(() => controller.abort(), timeout);
-                try {
-                    const response = await fetch(url, { signal: controller.signal, ...options });
-                    clearTimeout(id);
-                    return response;
-                } catch (err) {
-                    clearTimeout(id);
-                    throw err;
-                }
-            }
-
-            // Safe message rendering: avoid innerHTML with untrusted content.
-            function showMessageText(text, type = 'success') {
-                messageBox.textContent = text;
-                messageBox.className = `message-box ${type}`;
-                messageBox.style.display = 'block';
-            }
-
-            // Build a safe rich success message (session complete) using DOM APIs.
-            function showSessionComplete(session) {
-                messageBox.innerHTML = ''; // controlled construction
-                messageBox.className = 'message-box success';
-                const title = document.createElement('div');
-                title.style.fontWeight = '700';
-                title.textContent = 'Session Complete!';
-                const idLine = document.createElement('div');
-                idLine.style.marginTop = '8px';
-                idLine.innerHTML = 'Your Session ID is: ';
-                const idStrong = document.createElement('strong');
-                idStrong.textContent = session;
-                idLine.appendChild(idStrong);
-
-                const info = document.createElement('div');
-                info.style.marginTop = '12px';
-                info.innerHTML = 'Please fill out the ';
-                const link = document.createElement('a');
-                link.href = 'https://forms.gle/3HtPpoSSfpQtNio77';
-                link.target = '_blank';
-                link.rel = 'noopener noreferrer';
-                link.textContent = 'release form';
-                info.appendChild(link);
-                info.appendChild(document.createTextNode(' and include this Session ID on it.'));
-
-                messageBox.appendChild(title);
-                messageBox.appendChild(idLine);
-                messageBox.appendChild(info);
-                messageBox.style.display = 'block';
-            }
-
-            function hideMessage() {
-                messageBox.style.display = 'none';
-                messageBox.textContent = '';
-            }
-
-            function updateProgress() {
-                progressCounterEl.textContent = `Sample ${successfulSamples} of ${REQUIRED_SAMPLES}`;
-                const progressPercentage = Math.round((successfulSamples / REQUIRED_SAMPLES) * 100);
-                progressBarEl.style.width = `${progressPercentage}%`;
-                progressBarEl.parentElement.setAttribute('aria-valuenow', progressPercentage);
-            }
-
-            // --- API calls ---
+            // --- API Functions ---
             async function getSessionId() {
                 try {
-                    const resp = await fetchWithTimeout(`${API_BASE_URL}/session`, {}, FETCH_TIMEOUT_MS);
-                    if (!resp.ok) throw new Error(`Server error: ${resp.status}`);
-                    // Guard for non-JSON responses
-                    const contentType = resp.headers.get('content-type') || '';
-                    if (!contentType.includes('application/json')) {
-                        throw new Error('Invalid response format from server.');
-                    }
-                    const data = await resp.json();
-                    return data.session_id || null;
+                    const response = await fetch(`${API_BASE_URL}/session`);
+                    if (!response.ok) throw new Error(`Server error: ${response.status}`);
+                    const data = await response.json();
+                    return data.session_id;
                 } catch (error) {
-                    showMessageText("Could not connect to the server. Please ensure it's running and try refreshing.", "error");
+                    showMessage("Could not connect to the server. Please ensure it's running and try refreshing.", "error");
                     typingInputEl.disabled = true;
                     return null;
                 }
@@ -348,233 +234,156 @@
 
             async function sendTypingSample() {
                 if (isSubmitting) return;
-                if (!sessionId) {
-                    showMessageText('No session available. Please refresh the page.', 'error');
-                    return;
-                }
-
-                // Basic validation: ensure typed text matches the phrase exactly before sending
-                const typed = typingInputEl.value;
-                if (typed.length === 0) return;
-                if (typed !== TYPING_PHRASE) {
-                    showMessageText('The typed phrase does not match exactly. Please try again.', 'error');
-                    handleRetryMechanism();
-                    return;
-                }
-
                 isSubmitting = true;
                 typingInputEl.disabled = true;
-                // show a submitting indicator
-                const submittingNode = document.createElement('div');
-                submittingNode.className = 'submitting';
-                submittingNode.textContent = 'Submitting sample...';
-                messageBox.innerHTML = '';
-                messageBox.appendChild(submittingNode);
-                messageBox.className = 'message-box';
-                messageBox.style.display = 'block';
 
-                // Send timestamps in nanoseconds using the keys expected by server:
-                // keyDownTimestamp and keyUpTimestamp represent nanoseconds (relative to performance.timeOrigin).
                 const payload = {
                     session_id: sessionId,
-                    key_events: keyEvents.map(ev => ({
-                        key: ev.key,
-                        keyDownTimestamp: ev.keyDownTimestamp, // nanoseconds
-                        keyUpTimestamp: ev.keyUpTimestamp // nanoseconds
+                    key_events: keyEvents.map(event => ({
+                        key: event.key,
+                        keyDownTimestamp: event.keyDownTimestamp,
+                        keyUpTimestamp: event.keyUpTimestamp
                     }))
                 };
 
                 try {
-                    const resp = await fetchWithTimeout(`${API_BASE_URL}/record`, {
+                    const response = await fetch(`${API_BASE_URL}/record`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(payload),
-                    }, FETCH_TIMEOUT_MS);
-
-                    // If server returns non-json, handle gracefully
-                    const ct = resp.headers.get('content-type') || '';
-                    let data = {};
-                    if (ct.includes('application/json')) {
-                        data = await resp.json();
-                    } else {
-                        // treat as text
-                        data = { message: await resp.text() };
+                    });
+                    const data = await response.json();
+                    if (!response.ok) {
+                         // The new server returns a nested detail object
+                        const errorDetail = (data.detail && data.detail.detail) ? data.detail.detail : 'An unknown error occurred.';
+                        throw new Error(errorDetail);
                     }
 
-                    if (!resp.ok) {
-                        // handle nested detail as before but safely
-                        const detail = data && data.detail ? (data.detail.detail || data.detail) : null;
-                        const errMsg = detail || data.message || `Server returned ${resp.status}`;
-                        throw new Error(errMsg);
-                    }
-
-                    // Success handling
-                    if (data.message && data.session_complete) {
+                    if (data.message) {
                         successfulSamples = REQUIRED_SAMPLES;
-                        showSessionComplete(sessionId);
-                    } else if (typeof data.events_recorded_for_session === 'number') {
-                        successfulSamples = data.events_recorded_for_session;
-                        showMessageText(`Success! Sample ${successfulSamples} of ${REQUIRED_SAMPLES} recorded.`, 'success');
-                        setTimeout(resetForNextAttempt, 1200);
+                        const finalMessage = `
+                            <strong>Session Complete!</strong><br>
+                            Your Session ID is: <strong>${sessionId}</strong><br><br>
+                            Please fill out the <a href="https://forms.gle/3HtPpoSSfpQtNio77" target="_blank">release form</a> and include this Session ID on it.
+                        `;
+                        showMessage(finalMessage, 'success');
                     } else {
-                        // fallback
-                        successfulSamples = Math.min(REQUIRED_SAMPLES, successfulSamples + 1);
-                        showMessageText(`Success! Sample recorded. (${successfulSamples}/${REQUIRED_SAMPLES})`, 'success');
-                        setTimeout(resetForNextAttempt, 1200);
+                        successfulSamples = data.events_recorded_for_session;
+                        showMessage(`Success! Sample ${successfulSamples} of ${REQUIRED_SAMPLES} recorded.`, 'success');
+                        setTimeout(resetForNextAttempt, 1500);
                     }
                     updateProgress();
                 } catch (error) {
-                    // Do not inject raw error text as HTML
-                    showMessageText(`Validation Error: ${error.message}`, 'error');
+                    const errorMessage = `<strong>Validation Error:</strong> ${error.message}`;
+                    showMessage(errorMessage, "error");
                     handleRetryMechanism();
                 } finally {
                     isSubmitting = false;
                 }
             }
 
-            // --- Input & key event handling ---
-
-            // We track physical keys by event.code to avoid conflating keys from different locations.
-            // We send the user-facing label (event.key) with each recorded event.
-            const keyState = {}; // keyed by event.code
-
-            function handleKeyDown(event) {
-                if (composing) return;
-
-                if (event.code in keyState) {
-                    // duplicate keydown for same code; ignore
-                    return;
-                }
-
-                // For Enter: submit if the text is non-empty and matches or longer than phrase
-                if (event.key === 'Enter') {
-                    event.preventDefault();
-                    if (typingInputEl.value.length > 0) {
-                        setTimeout(sendTypingSample, 100);
-                    }
-                    return;
-                }
-
-                // Record keyDown timestamp using nanoseconds (relative to performance.timeOrigin)
-                keyState[event.code] = {
-                    key: event.key === ' ' ? 'space' : event.key,
-                    keyDownTimestamp: nowNs()
-                };
-            }
-
-            function handleKeyUp(event) {
-                if (composing) return;
-                const state = keyState[event.code];
-                if (!state) return;
-                const keyName = state.key;
-                const downTs = state.keyDownTimestamp;
-                const upTs = nowNs();
-                keyEvents.push({
-                    key: keyName,
-                    keyDownTimestamp: downTs,
-                    keyUpTimestamp: upTs
-                });
-                delete keyState[event.code];
-            }
-
-            // Composition events for IME input (e.g., CJK) — ignore key events during composition
-            typingInputEl.addEventListener('compositionstart', () => composing = true);
-            typingInputEl.addEventListener('compositionend', () => {
-                composing = false;
-            });
-
-            function handleCharacterHighlight() {
-                const typedText = typingInputEl.value;
-                const phraseChars = typingPhraseEl.querySelectorAll('span');
-                phraseChars.forEach((span, index) => {
-                    span.classList.toggle('highlight', index < typedText.length);
-                });
-            }
-
-            // If sending failed, allow a clearer retry UX:
-            function handleRetryMechanism() {
-                // show "Press Enter to try again" and auto-reset after a short pause.
-                const retryHint = document.createElement('div');
-                retryHint.className = 'submitting';
-                retryHint.textContent = 'Press Enter to retry or wait to continue...';
-                messageBox.innerHTML = '';
-                messageBox.appendChild(retryHint);
-                messageBox.className = 'message-box error';
+            // --- UI & State Management ---
+            function showMessage(msg, type) {
+                messageBox.innerHTML = msg;
+                messageBox.className = `message-box ${type}`;
                 messageBox.style.display = 'block';
+            }
 
-                let timeoutId = null;
-                const enterListener = (ev) => {
-                    if (ev.key === 'Enter') {
-                        clearTimeout(timeoutId);
-                        document.removeEventListener('keydown', enterListener);
-                        resetForNextAttempt();
-                    }
-                };
-                document.addEventListener('keydown', enterListener);
-                timeoutId = setTimeout(() => {
-                    document.removeEventListener('keydown', enterListener);
-                    resetForNextAttempt();
-                }, 3000);
+            function hideMessage() {
+                messageBox.style.display = 'none';
             }
 
             function resetForNextAttempt() {
                 typingInputEl.value = '';
                 keyEvents = [];
                 hideMessage();
-                typingPhraseEl.querySelectorAll('span').forEach(span => span.classList.remove('highlight'));
-                // clear any dangling keyState
-                for (const code in keyState) delete keyState[code];
+                document.querySelectorAll('#typingPhrase span').forEach(span => span.classList.remove('highlight'));
                 if (successfulSamples < REQUIRED_SAMPLES) {
                     typingInputEl.disabled = false;
                     typingInputEl.focus();
                 }
             }
 
-            // --- Initialization ---
-            async function init() {
-                // Build phrase spans safely
-                typingPhraseEl.innerHTML = '';
-                for (const ch of TYPING_PHRASE.split('')) {
-                    const sp = document.createElement('span');
-                    sp.textContent = ch;
-                    typingPhraseEl.appendChild(sp);
-                }
+            function handleRetryMechanism() {
+                let timeoutId = null;
+                const retryAction = () => {
+                    clearTimeout(timeoutId);
+                    document.removeEventListener('keydown', enterKeyListener);
+                    resetForNextAttempt();
+                };
+                const enterKeyListener = (event) => {
+                    if (event.key === 'Enter') retryAction();
+                };
+                document.addEventListener('keydown', enterKeyListener);
+                timeoutId = setTimeout(() => {
+                    document.removeEventListener('keydown', enterKeyListener);
+                    retryAction();
+                }, 3000);
+            }
 
-                updateProgress();
+            function updateProgress() {
+                progressCounterEl.textContent = `Sample ${successfulSamples} of ${REQUIRED_SAMPLES}`;
+                const progressPercentage = (successfulSamples / REQUIRED_SAMPLES) * 100;
+                progressBarEl.style.width = `${progressPercentage}%`;
+            }
 
-                // Focus the input but do not force on assistive tech — allow focus programmatically
-                typingInputEl.focus();
-
-                // Acquire a session
-                sessionId = await getSessionId();
-                if (!sessionId) {
+            // --- Event Handlers ---
+            const keyState = {};
+            function handleKeyDown(event) {
+                if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) {
+                    event.preventDefault();
                     return;
                 }
 
-                // Bind keyboard listeners
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    if (typingInputEl.value.length > 0) {
+                         setTimeout(sendTypingSample, 100);
+                    }
+                    return;
+                }
+
+                if (keyState[event.key]) return;
+                keyState[event.key] = { keyDownTimestamp: Math.round(performance.now() * 1000000) };
+            }
+
+            function handleKeyUp(event) {
+                if (!keyState[event.key]) return;
+                let keyName = event.key === ' ' ? 'space' : event.key;
+                keyEvents.push({ key: keyName, keyDownTimestamp: keyState[event.key].keyDownTimestamp, keyUpTimestamp: Math.round(performance.now() * 1000000) });
+                delete keyState[event.key];
+            }
+
+            function handleCharacterHighlight() {
+                const typedText = typingInputEl.value;
+                const phraseChars = document.querySelectorAll('#typingPhrase span');
+                phraseChars.forEach((span, index) => span.classList.toggle('highlight', index < typedText.length));
+            }
+
+            // --- Initialization ---
+            async function init() {
+                typingPhraseEl.innerHTML = TYPING_PHRASE.split('').map(char => `<span>${char}</span>`).join('');
+                updateProgress();
+                typingInputEl.focus();
+
+                sessionId = await getSessionId();
+                if (!sessionId) return;
+
                 typingInputEl.addEventListener('keydown', handleKeyDown);
                 typingInputEl.addEventListener('keyup', handleKeyUp);
                 typingInputEl.addEventListener('input', handleCharacterHighlight);
 
-                // Submit conditions: exact match OR longer-than-phrase (paste) OR explicit Enter (handled in keydown)
                 typingInputEl.addEventListener('input', () => {
-                    // If value longer than phrase, treat as an attempt (likely paste or extra characters)
                     if (typingInputEl.value.length > TYPING_PHRASE.length) {
-                        // small debounce to avoid double sends
-                        setTimeout(() => {
-                            if (!isSubmitting) sendTypingSample();
-                        }, 100);
+                         setTimeout(sendTypingSample, 100);
                     } else if (typingInputEl.value === TYPING_PHRASE) {
-                        setTimeout(() => {
-                            if (!isSubmitting) sendTypingSample();
-                        }, 100);
+                        setTimeout(sendTypingSample, 100);
                     }
                 });
             }
 
-            // Kick off
             init();
-        })();
+        });
     </script>
 </body>
 </html>
