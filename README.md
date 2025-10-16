@@ -3,7 +3,7 @@ Working app: http://typepod.l5.fyi/
 
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/11307/badge)](https://www.bestpractices.dev/projects/11307)
 
-[Donate](https://link.depay.com/bd2CN2mC43qflZBvSONiJ) - ivan-official.eth
+[Donate](https://optimistic.etherscan.io/address/0x17ac0B98b4B5a26E3a6e67DB20Cf2A38aAAEd5B6) - ivan-official.eth
 
 
 ## Key Event Recorder API Project
