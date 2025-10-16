@@ -128,8 +128,19 @@
             color: #721c24;
             border: 1px solid #f5c6cb;
         }
+        /* Visually hidden label for accessibility */
+        .visually-hidden {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            margin: -1px;
+            padding: 0;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            border: 0;
+        }
 
-        /* --- ADDED: Dark Mode Theme --- */
+        /* --- Dark Mode Theme --- */
         @media (prefers-color-scheme: dark) {
             body {
                 background-color: #1a1a1a;
@@ -191,6 +202,7 @@
             <div id="typingPhrase"></div>
         </div>
 
+        <label for="typingInput" class="visually-hidden">Type the phrase here</label>
         <input type="text" id="typingInput" class="input-field" placeholder="Start typing here..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" autofocus>
 
         <div class="progress-counter" id="progressCounter">Sample 0 of 5</div>
@@ -198,7 +210,7 @@
             <div id="progressBar" class="progress-bar"></div>
         </div>
 
-        <div id="messageBox" class="message-box"></div>
+        <div id="messageBox" class="message-box" role="status" aria-live="polite"></div>
     </div>
 
     <script>
@@ -226,7 +238,7 @@
                     const data = await response.json();
                     return data.session_id;
                 } catch (error) {
-                    showMessage("Could not connect to the server. Please ensure it's running and try refreshing.", "error");
+                    showMessage("Could not connect to the server. Please ensure it's running and try refreshing.", "error", null);
                     typingInputEl.disabled = true;
                     return null;
                 }
@@ -253,29 +265,35 @@
                         body: JSON.stringify(payload),
                     });
                     const data = await response.json();
+
                     if (!response.ok) {
-                         // The new server returns a nested detail object
-                        const errorDetail = (data.detail && data.detail.detail) ? data.detail.detail : 'An unknown error occurred.';
-                        throw new Error(errorDetail);
+                        // More robust error parsing: check for 'detail' string or object
+                        let errorMsg = 'An unknown error occurred.';
+                        if (data && typeof data.detail === 'string') {
+                            errorMsg = data.detail;
+                        } else if (data && data.detail && typeof data.detail.detail === 'string') {
+                            errorMsg = data.detail.detail; // FastAPI's nested error
+                        }
+                        throw new Error(errorMsg);
                     }
 
-                    if (data.message) {
+                    if (data.message) { // Final completion message
                         successfulSamples = REQUIRED_SAMPLES;
-                        const finalMessage = `
+                        const mainMessage = `
                             <strong>Session Complete!</strong><br>
-                            Your Session ID is: <strong>${sessionId}</strong><br><br>
+                            Your Session ID is: <span id="finalSessionId">${sessionId}</span><br><br>
                             Please fill out the <a href="https://forms.gle/3HtPpoSSfpQtNio77" target="_blank">release form</a> and include this Session ID on it.
                         `;
-                        showMessage(finalMessage, 'success');
+                        showMessage(mainMessage, 'success', sessionId); // Pass session_id for setting textContent
                     } else {
                         successfulSamples = data.events_recorded_for_session;
-                        showMessage(`Success! Sample ${successfulSamples} of ${REQUIRED_SAMPLES} recorded.`, 'success');
+                        showMessage(`Success! Sample ${successfulSamples} of ${REQUIRED_SAMPLES} recorded.`, 'success', null);
                         setTimeout(resetForNextAttempt, 1500);
                     }
                     updateProgress();
                 } catch (error) {
                     const errorMessage = `<strong>Validation Error:</strong> ${error.message}`;
-                    showMessage(errorMessage, "error");
+                    showMessage(errorMessage, "error", null);
                     handleRetryMechanism();
                 } finally {
                     isSubmitting = false;
@@ -283,8 +301,12 @@
             }
 
             // --- UI & State Management ---
-            function showMessage(msg, type) {
-                messageBox.innerHTML = msg;
+            // Updated showMessage to handle dynamic elements with textContent
+            function showMessage(mainMsgHTML, type, dynamicSessionId = null) {
+                messageBox.innerHTML = mainMsgHTML; // Still use innerHTML for bold, links etc.
+                if (dynamicSessionId && document.getElementById('finalSessionId')) {
+                    document.getElementById('finalSessionId').textContent = dynamicSessionId;
+                }
                 messageBox.className = `message-box ${type}`;
                 messageBox.style.display = 'block';
             }
