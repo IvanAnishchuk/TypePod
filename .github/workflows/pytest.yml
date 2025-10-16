@@ -17,10 +17,9 @@ jobs:
       with:
         fetch-depth: 0 # Required for some coverage actions
 
-    - name: Set up Python 3.12
     - name: Enable caching
       uses: astral-sh/setup-uv@v6
-        with:
+      with:
         enable-cache: true
         python-version: '3.12' # Specify your desired Python version
 
